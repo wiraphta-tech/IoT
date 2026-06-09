@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoT Control Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0a0a1a;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 20px;
+    color: #e2e8f0;
+  }
+
+  .dash-title {
+    color: #a78bfa;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dash-title i { font-size: 24px; }
+
+  .section-label {
+    color: #7c3aed;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    margin-top: 18px;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  @media (max-width: 600px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .card {
+    background: #12122a;
+    border: 0.5px solid #2e2060;
+    border-radius: 12px;
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.3s;
+  }
+
+  .card:hover { border-color: #4c1d95; }
+
+  .card-label {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  /* ===== PUMP TOGGLE ===== */
+  .pump-btn {
+    width: 68px;
+    height: 34px;
+    border-radius: 17px;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.3s;
+    outline: none;
+  }
+
+  .pump-btn.off {
+    background: #1e1b4b;
+    border: 1px solid #4338ca;
+  }
+
+  .pump-btn.on {
+    background: #7c3aed;
+    border: 1px solid #a78bfa;
+  }
+
+  .pump-btn::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    transition: left 0.3s;
+  }
+
+  .pump-btn.off::after { left: 4px; background: #475569; }
+  .pump-btn.on::after  { left: 38px; background: #fff; }
+
+  .pump-status {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .pump-status.off { color: #6366f1; }
+  .pump-status.on  { color: #a78bfa; }
+
+  /* ===== LED BUTTON ===== */
+  .led-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+
+  .led-circle.off {
+    background: #7f1d1d;
+    box-shadow: 0 0 6px #ef444455;
+  }
+
+  .led-circle.on {
+    background: #16a34a;
+    box-shadow: 0 0 16px #22c55e99, 0 0 32px #22c55e44;
+  }
+
+  .led-label {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .led-label.off { color: #f87171; }
+  .led-label.on  { color: #4ade80; }
+
+  /* ===== GAUGE ===== */
+  .gauge-wrap {
+    position: relative;
+    width: 90px;
+    height: 56px;
+  }
+
+  canvas.gauge-c { display: block; }
+
+  .gauge-val {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+  }
+
+  .gauge-unit { font-size: 10px; color: #94a3b8; }
+
+  /* ===== API STATUS MSG ===== */
+  .api-msg {
+    font-size: 10px;
+    color: #6366f1;
+    min-height: 14px;
+    text-align: center;
+    transition: color 0.3s;
+  }
+
+  .api-msg.ok  { color: #4ade80; }
+  .api-msg.err { color: #f87171; }
+
+  /* ===== DIVIDER ===== */
+  .divider {
+    border: none;
+    border-top: 0.5px solid #1e1b4b;
+    margin: 10px 0;
+  }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: #334155;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="dash-title">
+  <i class="ti ti-cpu"></i> IoT Control Dashboard
+</div>
+
+<!-- PUMP SECTION -->
+<div class="section-label">ควบคุมปั๊มน้ำ</div>
+<div class="grid-2">
+  <div class="card">
+    <i class="ti ti-droplet" style="font-size:24px;color:#60a5fa"></i>
+    <div class="card-label">Pump 1 (V2)</div>
+    <button class="pump-btn off" id="pump1-btn" aria-label="Toggle Pump 1" onclick="togglePump(1)"></button>
+    <div class="pump-status off" id="pump1-status">ปิด</div>
+    <div class="api-msg" id="pump1-msg"></div>
+  </div>
+  <div class="card">
+    <i class="ti ti-droplet" style="font-size:24px;color:#818cf8"></i>
+    <div class="card-label">Pump 2 (V3)</div>
+    <button class="pump-btn off" id="pump2-btn" aria-label="Toggle Pump 2" onclick="togglePump(2)"></button>
+    <div class="pump-status off" id="pump2-status">ปิด</div>
+    <div class="api-msg" id="pump2-msg"></div>
+  </div>
+</div>
+
+<!-- LED SECTION -->
+<div class="section-label">สถานะการทำงาน LED</div>
+<div class="grid-2">
+  <div class="card">
+    <div class="card-label">LED 1 (V0)</div>
+    <button class="led-circle off" id="led1-btn" aria-label="Toggle LED 1" onclick="toggleLed(1)"></button>
+    <div class="led-label off" id="led1-label">ปิด</div>
+    <div class="api-msg" id="led1-msg"></div>
+  </div>
+  <div class="card">
+    <div class="card-label">LED 2 (V1)</div>
+    <button class="led-circle off" id="led2-btn" aria-label="Toggle LED 2" onclick="toggleLed(2)"></button>
+    <div class="led-label off" id="led2-label">ปิด</div>
+    <div class="api-msg" id="led2-msg"></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- SENSOR SECTION -->
+<div class="section-label">เซ็นเซอร์สภาพแวดล้อม</div>
+<div class="grid-4">
+  <div class="card">
+    <i class="ti ti-temperature" style="font-size:22px;color:#f472b6"></i>
+    <div class="card-label">อุณหภูมิ (V4)</div>
+    <div class="gauge-wrap">
+      <canvas class="gauge-c" id="g0" width="90" height="56"></canvas>
+      <div class="gauge-val" id="gv0">--<span class="gauge-unit">°C</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <i class="ti ti-cloud" style="font-size:22px;color:#60a5fa"></i>
+    <div class="card-label">ความชื้นอากาศ (V5)</div>
+    <div class="gauge-wrap">
+      <canvas class="gauge-c" id="g1" width="90" height="56"></canvas>
+      <div class="gauge-val" id="gv1">--<span class="gauge-unit">%</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <i class="ti ti-plant" style="font-size:22px;color:#4ade80"></i>
+    <div class="card-label">ความชื้นดิน (V6)</div>
+    <div class="gauge-wrap">
+      <canvas class="gauge-c" id="g2" width="90" height="56"></canvas>
+      <div class="gauge-val" id="gv2">--<span class="gauge-unit">%</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <i class="ti ti-sun" style="font-size:22px;color:#fbbf24"></i>
+    <div class="card-label">วัดแสง (V7)</div>
+    <div class="gauge-wrap">
+      <canvas class="gauge-c" id="g3" width="90" height="56"></canvas>
+      <div class="gauge-val" id="gv3">--<span class="gauge-unit">lx</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">Blynk IoT Dashboard &mdash; Auto refresh every 10s</div>
+
+<script>
+  /* ===== CONFIG ===== */
+  const PUMP_TOKEN = 'J5XNsxF6kWPCI_9d-owdvHD6wCRcc0L9';
+  const LED_TOKEN  = 'YeImDih3cqkZMMNI-89gx9iUNHJ-b95h';
+
+  const state = { pump1: 0, pump2: 0, led1: 0, led2: 0 };
+
+  /* ===== GAUGE DRAW ===== */
+  const gaugeColors = ['#f472b6', '#60a5fa', '#4ade80', '#fbbf24'];
+  const gaugeUnits  = ['°C', '%', '%', 'lx'];
+  const gaugeVars   = ['V4', 'V5', 'V6', 'V7'];
+
+  function drawGauge(id, val, color) {
+    const c = document.getElementById(id);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, 90, 56);
+    const cx = 45, cy = 54, r = 40;
+    const start = Math.PI, end = 2 * Math.PI;
+
+    /* track bg */
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, start, end);
+    ctx.strokeStyle = '#1e1b4b';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    /* value arc */
+    if (val !== null) {
+      const angle = start + (Math.max(0, Math.min(100, val)) / 100) * Math.PI;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, start, angle);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 9;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+  }
+
+  function updateGaugeUI(idx, val) {
+    const el = document.getElementById('gv' + idx);
+    el.innerHTML = Math.round(val) + '<span class="gauge-unit">' + gaugeUnits[idx] + '</span>';
+    drawGauge('g' + idx, val, gaugeColors[idx]);
+  }
+
+  /* ===== FETCH SENSOR ===== */
+  async function fetchSensor(idx) {
+    const v = gaugeVars[idx];
+    const url = `https://blynk.cloud/external/api/get?token=${LED_TOKEN}&${v}`;
+    try {
+      const r = await fetch(url);
+      const t = await r.text();
+      const n = parseFloat(t);
+      if (!isNaN(n)) updateGaugeUI(idx, n);
+    } catch (e) {
+      console.warn('Sensor fetch error (idx ' + idx + '):', e.message);
+    }
+  }
+
+  /* ===== API HELPERS ===== */
+  async function blynkUpdate(token, pin, val, msgId) {
+    const msg = document.getElementById(msgId);
+    msg.textContent = 'กำลังส่ง...';
+    msg.className = 'api-msg';
+    const url = `https://blynk.cloud/external/api/update?token=${token}&${pin}=${val}`;
+    try {
+      const r = await fetch(url);
+      msg.textContent = r.ok ? 'สำเร็จ ✓' : 'ผิดพลาด ✗';
+      msg.className = r.ok ? 'api-msg ok' : 'api-msg err';
+    } catch (e) {
+      msg.textContent = 'เชื่อมต่อไม่ได้';
+      msg.className = 'api-msg err';
+    }
+    setTimeout(() => {
+      msg.textContent = '';
+      msg.className = 'api-msg';
+    }, 2500);
+  }
+
+  /* ===== TOGGLE PUMP ===== */
+  function togglePump(n) {
+    const key = 'pump' + n;
+    state[key] = state[key] ? 0 : 1;
+    const isOn = state[key];
+    const btn = document.getElementById('pump' + n + '-btn');
+    const sts = document.getElementById('pump' + n + '-status');
+    btn.className = 'pump-btn ' + (isOn ? 'on' : 'off');
+    sts.textContent = isOn ? 'เปิด' : 'ปิด';
+    sts.className = 'pump-status ' + (isOn ? 'on' : 'off');
+    const pin = n === 1 ? 'V2' : 'V3';
+    blynkUpdate(PUMP_TOKEN, pin, isOn, 'pump' + n + '-msg');
+  }
+
+  /* ===== TOGGLE LED ===== */
+  function toggleLed(n) {
+    const key = 'led' + n;
+    state[key] = state[key] ? 0 : 1;
+    const isOn = state[key];
+    const btn = document.getElementById('led' + n + '-btn');
+    const lbl = document.getElementById('led' + n + '-label');
+    btn.className = 'led-circle ' + (isOn ? 'on' : 'off');
+    lbl.textContent = isOn ? 'เปิด' : 'ปิด';
+    lbl.className = 'led-label ' + (isOn ? 'on' : 'off');
+    const pin = n === 1 ? 'V0' : 'V1';
+    blynkUpdate(LED_TOKEN, pin, isOn, 'led' + n + '-msg');
+  }
+
+  /* ===== INIT ===== */
+  for (let i = 0; i < 4; i++) {
+    drawGauge('g' + i, null, gaugeColors[i]);
+    fetchSensor(i);
+  }
+
+  setInterval(() => {
+    for (let i = 0; i < 4; i++) fetchSensor(i);
+  }, 10000);
+</script>
+
+</body>
+</html>
